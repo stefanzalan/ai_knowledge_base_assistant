@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -20,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.UUID;
 
 /**
  * Admin endpoint for submitting Markdown knowledge base documents.
@@ -58,5 +60,18 @@ public class DocumentAdminController {
 
         HttpStatus status = result.alreadyIngested() ? HttpStatus.OK : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(IngestionResponse.from(result));
+    }
+
+    /**
+     * Activates a PENDING_APPROVAL version, making it the single current
+     * ACTIVE version of the document. Returns 404 when the version does
+     * not exist or belongs to a different document, and 409 when the
+     * version is not in PENDING_APPROVAL status.
+     */
+    @PostMapping("/{documentId}/versions/{versionId}/activate")
+    public ResponseEntity<Void> activate(@PathVariable UUID documentId,
+                                         @PathVariable UUID versionId) {
+        ingestionService.activateVersion(documentId, versionId);
+        return ResponseEntity.noContent().build();
     }
 }

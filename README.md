@@ -92,6 +92,14 @@ curl -X POST http://localhost:8080/api/v1/admin/documents `
   -F "sourceUri=kb://documents/home-loan-faq"
 ```
 
+- Activate an ingested version (makes it the current ACTIVE version;
+  returns `204`, `404` for unknown/mismatched version, `409` if not
+  `PENDING_APPROVAL`):
+
+```powershell
+curl -X POST "http://localhost:8080/api/v1/admin/documents/{documentId}/versions/{versionId}/activate"
+```
+
 - Search the knowledge base (retrieval only, no answer generation):
 
 ```powershell

@@ -160,6 +160,15 @@ public class DocumentIngestionService {
         }
     }
 
+    /**
+     * Activates a PENDING_APPROVAL version of the given document, making it
+     * the single current ACTIVE version and updating vector retrieval
+     * eligibility transactionally.
+     */
+    public void activateVersion(UUID documentId, UUID versionId) {
+        ingestionStore.activateVersion(documentId, versionId);
+    }
+
     private String decodeUtf8(byte[] content) {
         try {
             return StandardCharsets.UTF_8.newDecoder()

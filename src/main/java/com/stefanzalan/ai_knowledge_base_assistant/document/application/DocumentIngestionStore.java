@@ -266,6 +266,23 @@ public class DocumentIngestionStore {
         }
     }
 
+    /**
+     * Activates a version only when it belongs to the given document.
+     * Returns 404 for a nonexistent version or a version of another
+     * document, so document/version mismatches are not distinguishable.
+     */
+    @Transactional
+    public void activateVersion(UUID documentId, UUID versionId) {
+        DocumentVersionEntity version = documentVersionRepository.findById(versionId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Document version not found"));
+
+        if (!version.getDocument().getId().equals(documentId)) {
+            throw new ApiException(HttpStatus.NOT_FOUND, "Document version not found");
+        }
+
+        activateVersion(versionId);
+    }
+
     @Transactional
     public void activateVersion(UUID versionId) {
         DocumentVersionEntity initialVersion = documentVersionRepository.findById(versionId)
