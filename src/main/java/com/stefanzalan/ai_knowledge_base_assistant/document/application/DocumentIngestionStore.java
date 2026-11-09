@@ -11,6 +11,7 @@ import com.stefanzalan.ai_knowledge_base_assistant.document.infrastructure.persi
 import com.stefanzalan.ai_knowledge_base_assistant.product.domain.FinancialProduct;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,13 +31,16 @@ public class DocumentIngestionStore {
     private final DocumentRepository documentRepository;
     private final DocumentVersionRepository documentVersionRepository;
     private final DocumentChunkRepository documentChunkRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public DocumentIngestionStore(DocumentRepository documentRepository,
                                   DocumentVersionRepository documentVersionRepository,
-                                  DocumentChunkRepository documentChunkRepository) {
+                                  DocumentChunkRepository documentChunkRepository,
+                                  JdbcTemplate jdbcTemplate) {
         this.documentRepository = documentRepository;
         this.documentVersionRepository = documentVersionRepository;
         this.documentChunkRepository = documentChunkRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     /**
@@ -295,6 +299,21 @@ public class DocumentIngestionStore {
         version.setCurrent(true);
 
         documentVersionRepository.save(version);
+
+        // Keep vector metadata consistent with the relational activation in
+        // the same transaction: only the activated version's chunks become
+        // retrievable; every other version of this document is excluded.
+        jdbcTemplate.update(
+                """
+                UPDATE vector_store v
+                SET metadata = jsonb_set(COALESCE(v.metadata, '{}'::jsonb), '{retrievalEligible}', to_jsonb(dv.id = ?::uuid))
+                FROM document_chunk c
+                JOIN document_version dv ON dv.id = c.document_version_id
+                WHERE v.id = c.id
+                  AND dv.document_id = ?::uuid
+                """,
+                versionId, documentId
+        );
 
         document.setStatus(DocumentStatus.ACTIVE);
         documentRepository.save(document);

@@ -129,6 +129,9 @@ public class DocumentIngestionService {
         metadata.put("chunkIndex", chunk.index());
         metadata.put("sourceUri", preparation.sourceUri());
         metadata.put("title", preparation.title());
+        // New vectors are never retrievable until their version is
+        // explicitly activated; activateVersion() flips this flag.
+        metadata.put("retrievalEligible", false);
         return metadata;
     }
 

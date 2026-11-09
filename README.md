@@ -72,13 +72,68 @@ overridden with environment variables. No credentials are committed.
 | `AI_REQUEST_TIMEOUT` | `120s` | AI provider request timeout |
 | `RETRIEVAL_TOP_K` | `5` | Chunks retrieved per query |
 | `RETRIEVAL_MIN_SIMILARITY` | `0.75` | Relevance threshold for abstention |
-| `RETRIEVAL_PRODUCT_FILTER_ENABLED` | `false` | Allow product-scoped questions |
 
-## Endpoints (infrastructure only — no business endpoints yet)
+## Endpoints
 
 - Health: `http://localhost:8080/actuator/health`
 - OpenAPI docs: `http://localhost:8080/swagger-ui.html`
 - API description: `http://localhost:8080/v3/api-docs`
+- Ingest a Markdown document (multipart/form-data):
+
+```powershell
+curl -X POST http://localhost:8080/api/v1/admin/documents `
+  -F "file=@docs/home-loan-faq.md" `
+  -F "title=Home Loan FAQ" `
+  -F "product=HOME_LOAN" `
+  -F "sourceUri=kb://documents/home-loan-faq"
+```
+
+- Search the knowledge base (retrieval only, no answer generation):
+
+```powershell
+curl -X POST http://localhost:8080/api/v1/retrieval/search `
+  -H "Content-Type: application/json" `
+  -d '{"query":"What are the eligibility requirements for a home loan?","product":"HOME_LOAN"}'
+```
+
+Example response:
+
+```json
+{
+  "query": "What are the eligibility requirements for a home loan?",
+  "product": "HOME_LOAN",
+  "chunks": [
+    {
+      "content": "## Eligibility\n\nApplicants must be at least 18 years old...",
+      "documentId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "documentVersionId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "title": "Home Loan FAQ",
+      "sourceUri": "kb://documents/home-loan-faq",
+      "chunkIndex": 2,
+      "similarityScore": 0.87
+    }
+  ]
+}
+```
+
+### Retrieval semantics
+
+- **Product filtering is mandatory.** Every search is scoped to the requested
+  `FinancialProduct`; chunks from other products can never be returned.
+- **Only the current ACTIVE version is searchable.** Each vector row carries a
+  `retrievalEligible` metadata flag. It is `false` for every newly ingested
+  chunk and is only flipped to `true` — inside the same transaction that
+  activates a version — for the chunks of the version being activated. All
+  other versions of that document are set back to `false`. The flag is part of
+  the vector-store filter expression, so ineligible vectors are excluded by the
+  database query itself, before top-K selection.
+- `topK` and `minSimilarity` are tunable via `RETRIEVAL_TOP_K` (default 5) and
+  `RETRIEVAL_MIN_SIMILARITY` (default 0.75). An empty `chunks` list is a valid
+  response when nothing eligible matches.
+- To test locally, start PostgreSQL (`docker compose up -d`), pull the models
+  (`ollama pull bge-m3`), ingest a document, activate its version, then call
+  the search endpoint — the query embedding uses the same `bge-m3` model as
+  ingestion.
 
 ## Database migrations
 
@@ -93,6 +148,8 @@ so Spring AI never competes with Flyway for schema creation.
   is relationally traceable to its document, version and chunk position.
 - `V3` adds a unique index on `document(source_uri, product)` — the logical
   document identity used for idempotent ingestion.
+- `V4` initializes the `retrievalEligible` JSONB flag on existing `vector_store`
+  rows (`true` only for chunks of the ACTIVE, current version).
 - `spring.ai.vectorstore.pgvector.schema-validation=true` makes the app verify
   the `vector_store` table (columns + dimensions) at startup.
 
@@ -111,15 +168,16 @@ be running. It verifies context startup, Flyway migration and JPA validation.
 com.stefanzalan.ai_knowledge_base_assistant
 ├── common          # shared exception handling, cross-cutting concerns
 ├── product         # financial product domain (FinancialProduct enum)
-├── document        # (next phase) KB document ingestion & versioning
+├── document        # KB document ingestion, versioning & activation
 ├── chat            # (next phase) conversations & messages
-├── retrieval       # (next phase) RAG retrieval pipeline + tunables
+├── retrieval       # RAG retrieval pipeline + tunables
 └── ai              # AI provider integration (Ollama adapter, later phases)
 ```
 
 ## Roadmap
 
 1. **Done:** Markdown ingestion pipeline (upload → checksum → versioning →
-   chunking → embeddings → pgvector), product metadata, lifecycle statuses.
-2. **Next:** approval workflow (PENDING_APPROVAL → ACTIVE), RAG retrieval with
-   product filtering and citation support, chat conversations/messages.
+   chunking → embeddings → pgvector), product metadata, lifecycle statuses,
+   version activation, and the filtered retrieval endpoint.
+2. **Next:** approval workflow API (PENDING_APPROVAL → ACTIVE), RAG answer
+   generation with citations, chat conversations/messages.

@@ -71,7 +71,6 @@ app:
   retrieval:
     top-k: ${RETRIEVAL_TOP_K:5}
     min-similarity: ${RETRIEVAL_MIN_SIMILARITY:0.75}
-    product-filter-enabled: ${RETRIEVAL_PRODUCT_FILTER_ENABLED:false}
 
 logging:
   level:

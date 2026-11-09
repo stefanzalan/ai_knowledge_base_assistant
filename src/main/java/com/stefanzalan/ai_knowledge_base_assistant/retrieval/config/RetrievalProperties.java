@@ -19,9 +19,6 @@ public class RetrievalProperties {
      */
     private double minSimilarity = 0.75;
 
-    /** Whether questions may be scoped to a {@code FinancialProduct}. */
-    private boolean productFilterEnabled = false;
-
     public int getTopK() {
         return topK;
     }
@@ -36,13 +33,5 @@ public class RetrievalProperties {
 
     public void setMinSimilarity(double minSimilarity) {
         this.minSimilarity = minSimilarity;
-    }
-
-    public boolean isProductFilterEnabled() {
-        return productFilterEnabled;
-    }
-
-    public void setProductFilterEnabled(boolean productFilterEnabled) {
-        this.productFilterEnabled = productFilterEnabled;
     }
 }
