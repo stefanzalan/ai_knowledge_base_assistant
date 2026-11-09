@@ -23,6 +23,12 @@ spring:
       chat:
         options:
           model: ${OLLAMA_CHAT_MODEL:qwen3:4b}
+          # Constrain output to valid JSON for the grounded Q&A endpoint.
+          format: json
+          # Local hardware budget: ~4096-token context window, bounded output.
+          num-ctx: ${OLLAMA_CHAT_NUM_CTX:4096}
+          num-predict: ${OLLAMA_CHAT_NUM_PREDICT:1024}
+          temperature: ${OLLAMA_CHAT_TEMPERATURE:0.2}
       embedding:
         options:
           model: ${OLLAMA_EMBEDDING_MODEL:bge-m3}
@@ -68,6 +74,7 @@ app:
   ai:
     request-timeout: ${AI_REQUEST_TIMEOUT:120s}
     embedding-dimensions: ${EMBEDDING_DIMENSIONS:1024}
+    max-context-chars: ${CHAT_MAX_CONTEXT_CHARS:4000}
   retrieval:
     top-k: ${RETRIEVAL_TOP_K:5}
     min-similarity: ${RETRIEVAL_MIN_SIMILARITY:0.75}

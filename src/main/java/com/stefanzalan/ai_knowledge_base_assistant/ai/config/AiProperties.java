@@ -27,6 +27,13 @@ public class AiProperties {
      */
     private int embeddingDimensions = 1024;
 
+    /**
+     * Maximum total characters of retrieved chunk content sent to the chat
+     * model per question. Chunks are included whole until the budget is
+     * reached; oversized chunks are skipped, never partially truncated.
+     */
+    private int maxContextChars = 4000;
+
     public Duration getRequestTimeout() {
         return requestTimeout;
     }
@@ -41,5 +48,13 @@ public class AiProperties {
 
     public void setEmbeddingDimensions(int embeddingDimensions) {
         this.embeddingDimensions = embeddingDimensions;
+    }
+
+    public int getMaxContextChars() {
+        return maxContextChars;
+    }
+
+    public void setMaxContextChars(int maxContextChars) {
+        this.maxContextChars = maxContextChars;
     }
 }
